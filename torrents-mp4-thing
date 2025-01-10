@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Torrent MP4 Viewer</title>
+  <script src="https://cdn.jsdelivr.net/npm/webtorrent/webtorrent.min.js"></script>
+  <style>
+    body {
+      font-family: 'Comfortaa', sans-serif;
+      font-weight: bold;
+      text-align: center;
+      margin: 20px;
+    }
+    #video-container {
+      margin-top: 20px;
+    }
+    #progress-bar-container {
+      width: 100%;
+      max-width: 500px;
+      margin: 20px auto;
+      background-color: #e0e0e0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #progress-bar {
+      width: 0%;
+      height: 20px;
+      background-color: #4caf50;
+      transition: width 0.2s;
+    }
+    #error-message {
+      color: red;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Torrent MP4 Viewer</h1>
+  <p>Paste your torrent magnet link below to stream the MP4 file:</p>
+  <textarea id="torrent-link" rows="4" cols="50" placeholder="Paste magnet link here..."></textarea><br>
+  <button id="start-download">Start Streaming</button>
+  <div id="progress-bar-container">
+    <div id="progress-bar"></div>
+  </div>
+  <div id="error-message"></div>
+  <div id="video-container"></div>
+
+  <script>
+    const client = new WebTorrent();
+
+    document.getElementById('start-download').addEventListener('click', () => {
+      const torrentLink = document.getElementById('torrent-link').value.trim();
+      const errorMessage = document.getElementById('error-message');
+      const progressBar = document.getElementById('progress-bar');
+      const videoContainer = document.getElementById('video-container');
+
+      // Clear previous messages and video content
+      errorMessage.textContent = '';
+      progressBar.style.width = '0%';
+      videoContainer.innerHTML = '';
+
+      if (!torrentLink) {
+        errorMessage.textContent = 'Please enter a valid torrent link!';
+        return;
+      }
+
+      client.add(torrentLink, torrent => {
+        console.log('Torrent info hash:', torrent.infoHash);
+
+        torrent.on('download', () => {
+          const progress = (torrent.progress * 100).toFixed(2);
+          progressBar.style.width = `${progress}%`;
+          console.log(`Progress: ${progress}%`);
+        });
+
+        torrent.on('done', () => {
+          progressBar.style.width = '100%';
+          console.log('Torrent download complete');
+        });
+
+        const file = torrent.files.find(file => file.name.endsWith('.mp4'));
+        if (file) {
+          console.log('Found MP4 file:', file.name);
+          videoContainer.innerHTML = '<h2>Streaming MP4:</h2><video id="video-player" controls></video>';
+          const videoElement = document.getElementById('video-player');
+          file.renderTo(videoElement);
+        } else {
+          console.error('No MP4 file found in this torrent');
+          errorMessage.textContent = 'No MP4 file found in this torrent!';
+        }
+      });
+
+      client.on('error', err => {
+        console.error('Torrent error:', err.message);
+        errorMessage.textContent = `Error: ${err.message}`;
+      });
+    });
+  </script>
+</body>
+</html>
